@@ -8,12 +8,18 @@ License: GPLv3 or later
 License URI: http://www.gnu.org/licenses/gpl-3.0.html
 
 == Description ==
-Integra el pago por medio de la plataforma de n1co, acepta pagos con tarjeta Visa, Mastercard, American Express,
+:es: Integra el pago por medio de la plataforma de n1co, acepta pagos con tarjeta Visa, Mastercard, American Express,
 transferencia bancaria y cobros recurrentes
 
-== Descarga ==
-1.  Presiona el boton Code / Download ZIP
+:us: Integrates payment through the n1co platform, accepts payments with Visa, Mastercard, American Express,
+bank transfer and recurring charges
+
+== Download file ==
+1.  Click the Code button/ Download ZIP
+
+
 ![plot](./img/readme/descarga_p.png)
+
 
 == Installation ==
 
