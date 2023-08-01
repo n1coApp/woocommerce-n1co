@@ -13,7 +13,7 @@ transferencia bancaria y cobros recurrentes
 
 == Descarga ==
 1.  Presiona el boton Code / Download ZIP
-![alt text](../img/readme/descarga_p.png)
+![plot](./img/readme/descarga_p.png)
 
 == Installation ==
 
