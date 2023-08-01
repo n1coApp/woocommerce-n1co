@@ -239,7 +239,7 @@ function n1co_init_gateway_class() {
                 }
 
 
-                $iframe = '<iframe src="' . $redirectUrl . '" frameborder="0" width="600" height="650"></iframe>';
+                $iframe = '<iframe src="' . $redirectUrl . '" frameborder="0" width="100%" height="650"></iframe>';
 
                 echo $iframe;
             }
