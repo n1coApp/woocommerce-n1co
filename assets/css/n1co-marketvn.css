@@ -1,0 +1,38 @@
+#epay-recurrente-card-number{
+    position: relative;
+}
+#epay-recurrente-type{
+    position: absolute;
+    text-transform: uppercase;
+    right: 30px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+#epay-recurrente-success{
+    position: absolute;
+    visibility: hidden;
+    right: 5px;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 20px;
+    width: 20px;
+    display: inline-block;    
+    background-size: cover;
+}
+
+#payment .payment_methods li .payment_box .wc-credit-card-form-card-name {
+    font-size: 1.5em;
+    background-repeat: no-repeat;
+    background-position: right .6180469716em center;
+    background-size: 32px 20px;
+}
+
+
+#payment .payment_methods li .payment_box .wc-credit-card-form-card-installments {
+    font-size: 1.5em;
+    background-repeat: no-repeat;
+    background-position: right .6180469716em center;
+    background-size: 32px 20px;
+}
+
+
