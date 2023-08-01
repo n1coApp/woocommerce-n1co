@@ -11,6 +11,9 @@ License URI: http://www.gnu.org/licenses/gpl-3.0.html
 Integra el pago por medio de la plataforma de n1co, acepta pagos con tarjeta Visa, Mastercard, American Express,
 transferencia bancaria y cobros recurrentes
 
+== Descarga ==
+1.  Presiona el boton Code / Download ZIP
+![alt text](../img/readme/descarga_p.png)
 
 == Installation ==
 
@@ -26,4 +29,3 @@ transferencia bancaria y cobros recurrentes
 == Changelog ==
 = v1.0.00 =
 * Versión inicial 2023
-
