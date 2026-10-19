@@ -22,6 +22,7 @@ final class N1co_Gateway_Blocks extends AbstractPaymentMethodType {
       } */
 
     public function get_payment_method_script_handles() {
+        $version = '1.29';
 
         wp_register_script(
                 'n1co_gateway-blocks-integration',
@@ -33,7 +34,7 @@ final class N1co_Gateway_Blocks extends AbstractPaymentMethodType {
                     'wp-html-entities',
                     'wp-i18n',
                 ],
-                null,
+                $version,
                 true
         );
         if (function_exists('wp_set_script_translations')) {

@@ -1,22 +1,22 @@
 <?php
 /**
- * WooCommerce n1co
+ * N1co pay for WooCommerce
  * 
  * @author            n1co
  * @copyright         2022 n1co
- * @license           GPL-2.0-or-later
+ * @license           GPL-3.0-or-later
  *
  * @wordpress-plugin
- * Plugin Name:       wooCommerce payment for n1co
- * Description:       Credit card payments for Woocommerce n1co Gateway
- * Version:           1.28
+ * Plugin Name:       N1co pay for Woocommerce
+ * Description:       Credit card payments on n1co for Woocommerce
+ * Version:           1.29
  * Requires at least: 5.2
  * Requires PHP:      7.0
  * Author:            n1co
  * Author URI:        https://www.n1co.com
- * Text Domain:       woo-n1co
- * License:           GPL v2 or later
- * License URI:       http://www.gnu.org/licenses/gpl-2.0.txt
+ * Text Domain:       n1co-for-woocommerce
+ * License:           GPL v3 or later
+ * License URI:       https://www.gnu.org/licenses/gpl-3.0.html
  */
 if (!defined('ABSPATH'))
     exit; // Exit if accessed directly
@@ -68,7 +68,7 @@ if ($if_woocomerce_inactive == false) {
 function antondrob_n1co_add_error_notice() {
     ?>
     <div class="notice notice-error is-dismissible">
-        <p><?php _e('WooCommerce N1co Plugin needs Woocommerce to be active!', 'woo-n1co'); ?></p>
+        <p><?php _e('WooCommerce N1co Plugin needs Woocommerce to be active!', 'n1co-for-woocommerce'); ?></p>
     </div>
     <?php
 }
