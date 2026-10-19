@@ -168,6 +168,7 @@ function n1co_init_gateway_class() {
                     'type' => 'text',
                     'label' => 'Label',
                     'description' => 'Llave secreta generada en la sección Configuracion->Webhook ',
+                    'sanitize_callback' => array($this, 'sanitize_webhook_key'),
                 )
             );
             $this->sandbox_mode = array(
@@ -183,10 +184,19 @@ function n1co_init_gateway_class() {
                     'type' => 'text',
                     'label' => 'Label',
                     'description' => 'Llave secreta generada en la sección Configuracion->Webhook ',
+                    'sanitize_callback' => array($this, 'sanitize_webhook_key'),
                 )
             );
 
             $this->form_fields = array_merge($this->general_settings, $this->live_mode, $this->sandbox_mode);
+        }
+
+        /**
+         * La llave del webhook se guarda tal cual: el sanitizado por defecto de WooCommerce
+         * (wp_kses_post) convierte "&" en "&amp;" y la firma HMAC deja de coincidir.
+         */
+        public function sanitize_webhook_key($value) {
+            return is_null($value) ? '' : trim(wp_unslash($value));
         }
 
         /**
@@ -455,6 +465,10 @@ function n1co_init_gateway_class() {
             } else {
                 $n1coWebhookKey = $this->get_option('n1co_live_webhook_key');
             }
+
+            // Llaves guardadas por versiones anteriores quedaron con "&amp;" en lugar de "&".
+            // Las llaves del portal n1co no contienen ";", así que revertirlo es exacto.
+            $n1coWebhookKey = str_replace('&amp;', '&', $n1coWebhookKey);
 
             $hmacHeader = $_SERVER["HTTP_X_H4B_HMAC_SHA256"];
             $content = file_get_contents("php://input");
