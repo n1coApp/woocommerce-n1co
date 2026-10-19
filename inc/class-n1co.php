@@ -28,7 +28,7 @@ function n1co_init_gateway_class() {
         public function __construct() {
 
             $this->id = 'n1co_gateway'; // payment gateway plugin ID
-            $this->icon = plugins_url('/woocommerce-n1co/img/logo-black-n1co.png'); //plugin_dir_url(__FILE__) . '../assets/img/n1co.jpg'; // URL of the icon that will be displayed on checkout page near your gateway name
+            $this->icon = plugins_url('/n1co-for-woocommerce/img/logo-black-n1co.png'); //plugin_dir_url(__FILE__) . '../assets/img/n1co.jpg'; // URL of the icon that will be displayed on checkout page near your gateway name
             $this->has_fields = true; // in case you need a custom credit card form
             $this->method_title = 'n1co ';
             $this->method_description = 'Acepta tus pagos por medio de n1co'; // will be displayed on the options page
@@ -196,7 +196,8 @@ function n1co_init_gateway_class() {
                   * @return string
                   */
         public function get_icon() {
-            $icon = '<img src="' . WC_HTTPS::force_https_url(plugins_url('/woocommerce-n1co/img/logo-black-n1co.png')) . '" alt="n1co" />';
+            
+            $icon = '<img src="' . WC_HTTPS::force_https_url(plugins_url('/n1co-for-woocommerce/img/logo-black-n1co.png')) . '" alt="n1co" />';
             $icon .= '<img src="' . WC_HTTPS::force_https_url(WC()->plugin_url() . '/assets/images/icons/credit-cards/visa.png') . '" alt="Visa" />';
             $icon .= '<img src="' . WC_HTTPS::force_https_url(WC()->plugin_url() . '/assets/images/icons/credit-cards/mastercard.png') . '" alt="MasterCard" />';
 
@@ -262,6 +263,16 @@ function n1co_init_gateway_class() {
             $total = $order->get_total();
             $this->n1coEndpoint = $this->get_option('n1co_code');
             $redirectUrl = get_post_meta($order_id, 'n1coCheckoutURL', true);
+            
+            // Verificar si la URL ya contiene parámetros
+            if (strpos($redirectUrl, '?') !== false) {
+            // Si ya tiene parámetros, agregar con &
+            $redirectUrl .= '&utm_source=wooCommerce';
+            } else {
+    // Si no tiene parámetros, agregar con ?
+                    $redirectUrl .= '?utm_source=wooCommerce';
+                    }
+            
             $redirect = $this->get_option('n1co_redirect_process');
 
             if ($redirect == 'iframe') {
@@ -340,7 +351,7 @@ function n1co_init_gateway_class() {
                 $cancelUrl = '';
             }
 
-            $item = array(
+        /*     $item = array(
                 'orderName' => $product_name,
                 'orderDescription' => $product_name,
                 'amount' => $total,
@@ -350,14 +361,34 @@ function n1co_init_gateway_class() {
                         'name' => 'order_id',
                         'value' => "$order_id"
                     ]),
+            );*/
+
+            $item = array(
+                'orderName' => $product_name,
+                'orderDescription' => $product_name,
+                'amount' => $total,
+                'successUrl' => $successUrl,
+                'cancelUrl' => $cancelUrl,
+                'metadata' => array(
+                    array(
+                        'name' => 'order_id',
+                        'value' => "$order_id"
+                    ),
+                    array(
+                        'name' => 'utm_source',
+                        'value' => 'wooCommerce'
+                    ),
+                ),
             );
+            
 
             try {
 
                 $result = wp_remote_post($n1coEndpoint,
                         array(
                             'method' => 'POST',
-                            'body' => json_encode($item),
+                            'body' => wp_json_encode($item),
+                            //'body' => json_encode($item),
                             'headers' => array(
                                 'Authorization' => 'Bearer ' . $token,
                                 'Content-Type' => 'application/json'
@@ -373,6 +404,14 @@ function n1co_init_gateway_class() {
 
                 update_post_meta($order_id, 'n1coOrderCode', $n1coOrderCode);
                 update_post_meta($order_id, 'n1coOrderId', $n1coOrderId);
+
+                // modificando URL para agregar utm_source
+              //  $n1coCheckout = add_query_arg('utm_source', 'wooCommerce', $n1coCheckout);
+
+                // Luego, actualizas el metadato con la URL modificada
+                //update_post_meta($order_id, 'n1coCheckoutURL', $n1coCheckout);
+
+
                 update_post_meta($order_id, 'n1coCheckoutURL', $n1coCheckout);
 
                 if ($this->n1co_log_enabled == 'yes') {
@@ -523,8 +562,20 @@ function n1co_init_gateway_class() {
                 } else {
 
 
-                    $querystr = "SELECT $wpdb->postmeta.post_id FROM $wpdb->postmeta WHERE $wpdb->postmeta.meta_key = 'n1coOrderId' AND $wpdb->postmeta.meta_value = '$n1coOrderId' limit 1 ";
-                    $results = $wpdb->get_results($querystr);
+                    //$querystr = "SELECT $wpdb->postmeta.post_id FROM $wpdb->postmeta WHERE $wpdb->postmeta.meta_key = 'n1coOrderId' AND $wpdb->postmeta.meta_value = '$n1coOrderId' limit 1 ";
+                    //$results = $wpdb->get_results($querystr);
+                    $results = $wpdb->get_results(
+                        $wpdb->prepare(
+                            "SELECT $wpdb->postmeta.post_id 
+                            FROM $wpdb->postmeta 
+                            WHERE $wpdb->postmeta.meta_key = %s 
+                            AND $wpdb->postmeta.meta_value = %s 
+                            LIMIT 1",
+                            'n1coOrderId', 
+                            $n1coOrderId
+                        )
+                    );                     
+                    
                     if (isset($results[0]->post_id) AND is_numeric($results[0]->post_id))
                         $orderId = $results[0]->post_id;
                     else

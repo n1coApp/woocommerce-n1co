@@ -1,11 +1,13 @@
-=== Payment Gateway for n1co on WooCommerce===
-Contributors: n1co,felipe
+=== N1co pay for WooCommerce===
+Contributors: n1co
 Requires at least: 5.0
-Tested up to: 5.0.1
+Tested up to: 6.6
 Requires PHP: 5.2.4
-Stable tag: 1.0.0
+Stable tag: 1.28
 License: GPLv3 or later
 License URI: http://www.gnu.org/licenses/gpl-3.0.html
+
+Plugin para aceptar pagos con tarjeta de crédito
 
 == Description ==
 Integra el pago por medio de la plataforma de n1co, acepta pagos con tarjeta Visa, Mastercard, American Express para sitios de comercio electrónico que se encuentren desarrollados en WordPress a través de la solución de WooCommerce. Este complemento permite al cliente realizar pagos con tarjeta de débito o crédito de una manera fácil y sencilla para el comercio y sus clientes.
@@ -55,6 +57,6 @@ WhatsApp: ​https://wa.me/50235353683
 
 
 == Changelog ==
-= v1.0.00 =
+= v1.1.0 =
 * Versión inicial 2023
 
