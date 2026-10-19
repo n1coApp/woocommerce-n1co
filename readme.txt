@@ -3,7 +3,7 @@ Contributors: n1co
 Requires at least: 5.0
 Tested up to: 6.6
 Requires PHP: 5.2.4
-Stable tag: 1.28
+Stable tag: 1.29
 License: GPLv3 or later
 License URI: http://www.gnu.org/licenses/gpl-3.0.html
 
@@ -57,6 +57,10 @@ WhatsApp: ​https://wa.me/50235353683
 
 
 == Changelog ==
+= v1.29 =
+* Seguridad: la búsqueda de la orden en el webhook usa consultas preparadas
+* Envía order_id y utm_source como metadata al crear el checkout
+
 = v1.1.0 =
 * Versión inicial 2023
 

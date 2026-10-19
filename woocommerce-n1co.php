@@ -9,7 +9,7 @@
  * @wordpress-plugin
  * Plugin Name:       N1co pay for Woocommerce
  * Description:       Credit card payments on n1co for Woocommerce
- * Version:           1.28
+ * Version:           1.29
  * Requires at least: 5.2
  * Requires PHP:      7.0
  * Author:            n1co
