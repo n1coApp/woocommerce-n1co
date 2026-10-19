@@ -3,7 +3,7 @@ Contributors: n1co
 Requires at least: 5.0
 Tested up to: 6.6
 Requires PHP: 5.2.4
-Stable tag: 1.29
+Stable tag: 1.30
 License: GPLv3 or later
 License URI: http://www.gnu.org/licenses/gpl-3.0.html
 
@@ -57,6 +57,10 @@ WhatsApp: ​https://wa.me/50235353683
 
 
 == Changelog ==
+= v1.30 =
+* Corrige la validación del webhook cuando la llave secreta contiene "&": WooCommerce la guardaba como "&amp;" y se rechazaban todos los eventos. Las llaves ya guardadas se corrigen sin volver a ingresarlas
+* El webhook responde 401 cuando la firma no es válida, para que n1co lo registre como no entregado
+
 = v1.29 =
 * Seguridad: la búsqueda de la orden en el webhook usa consultas preparadas
 * Envía order_id y utm_source como metadata al crear el checkout
