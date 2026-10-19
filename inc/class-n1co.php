@@ -470,7 +470,7 @@ function n1co_init_gateway_class() {
             // Las llaves del portal n1co no contienen ";", así que revertirlo es exacto.
             $n1coWebhookKey = str_replace('&amp;', '&', $n1coWebhookKey);
 
-            $hmacHeader = $_SERVER["HTTP_X_H4B_HMAC_SHA256"];
+            $hmacHeader = isset($_SERVER["HTTP_X_H4B_HMAC_SHA256"]) ? $_SERVER["HTTP_X_H4B_HMAC_SHA256"] : '';
             $content = file_get_contents("php://input");
 
             // Generar el hash
@@ -645,6 +645,10 @@ function n1co_init_gateway_class() {
                 }
 
                 wc_add_notice('No se recibio respuesta por parte del procesador de pagos n1co, intente nuevamente', 'error');
+
+                // Responder 2xx haría que n1co diera el evento por entregado; con 401 queda
+                // como no entregado en el portal y se puede reenviar una vez corregida la llave.
+                status_header(401);
                 exit();
             }
         }
