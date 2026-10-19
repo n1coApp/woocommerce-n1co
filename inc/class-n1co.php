@@ -5,12 +5,13 @@ if (!defined('ABSPATH'))
     /*
      * This action hook registers our PHP class as a WooCommerce payment gateway
      */
-add_filter('woocommerce_payment_gateways', 'n1co_add_gateway_class');
 
 function n1co_add_gateway_class($gateways) {
-    $gateways[] = 'WC_n1co_Gateway'; // your class name is here
+    $gateways[] = 'N1co_Gateway'; // your class name is here
     return $gateways;
 }
+
+add_filter('woocommerce_payment_gateways', 'n1co_add_gateway_class');
 
 /*
  * The class itself, please note that it is inside plugins_loaded action hook
@@ -19,16 +20,16 @@ add_action('plugins_loaded', 'n1co_init_gateway_class');
 
 function n1co_init_gateway_class() {
 
-    class WC_n1co_Gateway extends WC_Payment_Gateway {
+    class N1co_Gateway extends WC_Payment_Gateway {
 
         /**
          * Class constructor, more about it in Step 3
          */
         public function __construct() {
 
-            $this->id = 'n1co'; // payment gateway plugin ID
+            $this->id = 'n1co_gateway'; // payment gateway plugin ID
             $this->icon = plugins_url('/woocommerce-n1co/img/logo-black-n1co.png'); //plugin_dir_url(__FILE__) . '../assets/img/n1co.jpg'; // URL of the icon that will be displayed on checkout page near your gateway name
-            $this->has_fields = false; // in case you need a custom credit card form
+            $this->has_fields = true; // in case you need a custom credit card form
             $this->method_title = 'n1co ';
             $this->method_description = 'Acepta tus pagos por medio de n1co'; // will be displayed on the options page
             // Initialize the logger
@@ -45,9 +46,14 @@ function n1co_init_gateway_class() {
             $this->description = $this->get_option('description');
             $this->enabled = $this->get_option('enabled');
             $this->n1co_log_enabled = $this->get_option('n1co_log_enabled');
-            $this->n1co_code = $this->get_option('n1co_code');
-            $this->n1co_live_webhook_key = $this->get_option('n1co_live_webhook_key');
+            $this->n1co_testmode = 'yes' === $this->get_option('n1co_testmode');
+            $this->n1co_url_live = $this->get_option('n1co_url_live');
+            $this->n1co_url_sandbox = $this->get_option('n1co_url_sandbox');
             $this->n1co_redirect_process = $this->get_option('n1co_redirect_process');
+            $this->n1co_test_webhook_key = $this->get_option('n1co_test_webhook_key');
+            $this->n1co_live_webhook_key = $this->get_option('n1co_live_webhook_key');
+            $this->n1co_link_checkout = $this->get_option('n1co_link_checkout');
+            $this->n1co_link_test_checkout = $this->get_option('n1co_link_test_checkout');
 
             //  $this->live_public_key = $this->get_option('live_public_key');
             //  $this->live_secret_key = $this->get_option('live_secret_key');
@@ -82,11 +88,10 @@ function n1co_init_gateway_class() {
                 'n1co_settings_steps' => array(
                     'title' => 'Pasos para configuración n1co plugin',
                     'type' => 'title',
-                    'description' => __('<p>1. Para procesar pagos con n1co es necesario configurar la siguiente Webhook <code>' .
-                            home_url('/wc-api/n1co_webhook') . '</code> <br>contacte al ejecutivo de ventas, o cx al Tel.: '
-                            . '<a href="https://wa.me/50324086126/" target="_blank">+50324086126</a> para solicitar el token</p>'
-                            . '<p>2. En la configuracion del Link de pago en el <a href="https://portal.hugo.shop/" target="_blank">Portal n1co</a> '
-                            . ' en opciones avanzadas agregue los Campos Personalizados<br>order_id<br>callbackurl</p>'),
+                    'description' => __('<p>1. Para procesar pagos con n1co es necesario configurar la siguiente URL de acceso al Webhook <br> <code>' .
+                            home_url('/wc-api/n1co_webhook') . '</code> en la sección Configuración->Webhook en su cuenta del <a href="https://portal.n1co.shop" target="_blank">portal n1co</a>  <br>contacte al ejecutivo de ventas, o cx al Tel.: '
+                            . '<a href="https://wa.me/50324086126/" target="_blank">+50324086126</a> para solventar cualquier duda</p>'
+                    )
                 ),
                 'enabled' => array(
                     'title' => 'Habilitado/Deshabilitado',
@@ -98,12 +103,12 @@ function n1co_init_gateway_class() {
                 'title' => array(
                     'title' => 'Titulo',
                     'type' => 'text',
-                    'description' => 'Defina el título que los clientes veran duranta el proceso de pago <br>',
+                    'description' => 'Defina el título que los clientes verán duranta el proceso de pago <br>',
                     'default' => 'n1co',
                     'desc_tip' => false
                 ),
                 'description' => array(
-                    'title' => 'Descripcion',
+                    'title' => 'Descripción',
                     'type' => 'textarea',
                     'description' => 'Defina la descripción que veran los clientes durante el proceso de pago.',
                     'default' => 'Paga con tu tarjeta de crédito o débito vía n1co',
@@ -116,10 +121,17 @@ function n1co_init_gateway_class() {
                     'type' => 'checkbox',
                     'default' => 'no'
                 ),
+                'n1co_testmode' => array(
+                    'title' => 'Modo Test',
+                    'label' => 'Habilite modo pruebas',
+                    'type' => 'checkbox',
+                    'description' => 'Coloque la pasarela en modo sandbox usando el link de Checkout.',
+                    'default' => 'yes',
+                ),
                 'n1co_redirect_process' => array(
                     'title' => 'Modo de redirigir N1co',
                     'type' => 'select',
-                    'description' => 'Seleccione forma para redirigir clientes al metodo de pago',
+                    'description' => 'Seleccione forma para redirigir clientes al método de pago',
                     'required' => true,
                     'options' => array(
                         'redirect' => 'Redirigir pagina n1co',
@@ -127,10 +139,27 @@ function n1co_init_gateway_class() {
                     ),
                     'default_value' => 'redirect',
                 ),
-                'n1co_code' => array(
-                    'title' => 'Direccion de link de pago',
+                'n1co_url_live' => array(
+                    'title' => 'URL API Produccion',
                     'type' => 'text',
-                    'description' => 'Ingrese la direccion del link de pago reutilizable para cobrar los pedidos <br>',
+                    'description' => 'API Base Live <br>',
+                    'default' => 'https://api-pay.n1co.shop/api/paymentlink/checkout',
+                    'desc_tip' => false
+                ),
+                'n1co_url_sandbox' => array(
+                    'title' => 'URL API Sandbox',
+                    'type' => 'text',
+                    'description' => 'API Base Sandbox <br>',
+                    'default' => 'https://api-pay-sandbox.n1co.shop/api/paymentlink/checkout',
+                    'desc_tip' => false
+                )
+            );
+
+            $this->live_mode = array(
+                'n1co_link_checkout' => array(
+                    'title' => 'Link de Checkout',
+                    'type' => 'text',
+                    'description' => 'Llave generada en la sección Configuracion->Link de Checkout <br>',
                     'default' => '',
                     'desc_tip' => false
                 ),
@@ -138,11 +167,26 @@ function n1co_init_gateway_class() {
                     'title' => 'Token',
                     'type' => 'text',
                     'label' => 'Label',
-                    'description' => 'Token de producción para usar el servicio de n1co',
+                    'description' => 'Llave secreta generada en la sección Configuracion->Webhook ',
+                )
+            );
+            $this->sandbox_mode = array(
+                'n1co_link_test_checkout' => array(
+                    'title' => 'Link de Checkout',
+                    'type' => 'text',
+                    'description' => 'Llave generada en la sección Configuracion->Link de Checkout <br>',
+                    'default' => '',
+                    'desc_tip' => false
+                ),
+                'n1co_test_webhook_key' => array(
+                    'title' => 'Token',
+                    'type' => 'text',
+                    'label' => 'Label',
+                    'description' => 'Llave secreta generada en la sección Configuracion->Webhook ',
                 )
             );
 
-            $this->form_fields = array_merge($this->general_settings);
+            $this->form_fields = array_merge($this->general_settings, $this->live_mode, $this->sandbox_mode);
         }
 
         /**
@@ -217,7 +261,7 @@ function n1co_init_gateway_class() {
             // Obtener información del pedido
             $total = $order->get_total();
             $this->n1coEndpoint = $this->get_option('n1co_code');
-            $redirectUrl = $this->n1coEndpoint . "?amount=$total&order_id=$order_id&callbackurl=&stay=0";
+            $redirectUrl = get_post_meta($order_id, 'n1coCheckoutURL', true);
             $redirect = $this->get_option('n1co_redirect_process');
 
             if ($redirect == 'iframe') {
@@ -235,11 +279,11 @@ function n1co_init_gateway_class() {
                 echo '<p>' . __('Gracias por su compra, complete los datos en el formulario de abajo para pagar de forma segura por medio de n1co.', 'payabbhi') . '</p>';
 
                 if ($this->n1co_log_enabled == 'yes') {
-                    $this->logger->debug("****** WebHook Redirect for n1co Payment Frame", $this->logger_context);
+                    $this->logger->debug("****** Receipt Redirect for n1co Payment Frame", $this->logger_context);
                 }
 
 
-                $iframe = '<iframe src="' . $redirectUrl . '" frameborder="0" width="100%" height="650"></iframe>';
+                $iframe = '<iframe src="' . htmlentities($redirectUrl) . '" frameborder="0" width="600" height="650"></iframe>';
 
                 echo $iframe;
             }
@@ -253,39 +297,93 @@ function n1co_init_gateway_class() {
 
             $order = wc_get_order($order_id);
 
-            $this->n1coEndpoint = $this->get_option('n1co_code');
+            if ($this->n1co_testmode == 'yes') {
+                $n1coEndpoint = $this->n1co_url_sandbox;
+            } else {
+                $n1coEndpoint = $this->n1co_url_live;
+            }
+
+
             $redirect = $this->get_option('n1co_redirect_process');
 
             $currencyOrder = $order->get_currency();
             $total = $order->get_total();
             $cantidadProductos = count(WC()->cart->get_cart());
 
+            if ($this->n1co_testmode == 'yes') {
+                $token = $this->n1co_link_test_checkout;
+            } else {
+                $token = $this->n1co_link_checkout;
+            }
+
             //$baseUrl = $this->get_return_url($order). 'woon1co=true&order_id=' . $order_id;
-            $baseUrl = $this->get_return_url($order);
 
             if ($this->n1co_log_enabled == 'yes') {
                 $this->logger->debug("****** Numero de Orden for n1co Payment:", $this->logger_context);
                 $this->logger->debug(wc_print_r('No. Orden ' . $order->get_id(), true), $this->logger_context);
-                $this->logger->debug(wc_print_r('Checkout URL N1co ' . $this->n1coEndpoint, true), $this->logger_context);
-                $this->logger->debug(wc_print_r('callback URL N1co ' . $baseUrl, true), $this->logger_context);
             }
+
+            $product_name = 'Pedido No Orden: ' . $order->get_id();
+            $baseUrl = $this->get_return_url($order);
+
+            if (strpos($baseUrl, '?') !== false) {
+                $baseUrl .= '&';
+            } else {
+                $baseUrl .= '?';
+            }
+
+            if ($redirect == 'redirect') {
+                $successUrl = $baseUrl . 'woon1co=true&order_id=' . $order_id;
+                $cancelUrl = wc_get_checkout_url() . '?woon1co=cancel&order_id=' . $order_id;
+            } else {
+                $successUrl = '';
+                $cancelUrl = '';
+            }
+
+            $item = array(
+                'orderName' => $product_name,
+                'orderDescription' => $product_name,
+                'amount' => $total,
+                'successUrl' => $successUrl,
+                'cancelUrl' => $cancelUrl,
+                'metadata' => array([
+                        'name' => 'order_id',
+                        'value' => "$order_id"
+                    ]),
+            );
 
             try {
 
-                $redirectUrl = $this->n1coEndpoint . "?amount=$total&order_id=$order_id&callbackurl=$baseUrl&stay=0";
+                $result = wp_remote_post($n1coEndpoint,
+                        array(
+                            'method' => 'POST',
+                            'body' => json_encode($item),
+                            'headers' => array(
+                                'Authorization' => 'Bearer ' . $token,
+                                'Content-Type' => 'application/json'
+                            ),
+                        )
+                );
+
+                $response = json_decode($result['body'], true);
+
+                $n1coOrderCode = $response['orderCode'];
+                $n1coOrderId = $response['orderId'];
+                $n1coCheckout = $response['paymentLinkUrl'];
+
+                update_post_meta($order_id, 'n1coOrderCode', $n1coOrderCode);
+                update_post_meta($order_id, 'n1coOrderId', $n1coOrderId);
+                update_post_meta($order_id, 'n1coCheckoutURL', $n1coCheckout);
 
                 if ($this->n1co_log_enabled == 'yes') {
                     $this->logger->debug("****** Envio de Orden for n1co Payment:", $this->logger_context);
                     $this->logger->debug(wc_print_r('No. Orden ' . $order->get_id(), true), $this->logger_context);
-                    $this->logger->debug(wc_print_r('Checkout URL N1co ' . $redirectUrl, true), $this->logger_context);
+                    $this->logger->debug(wc_print_r('Checkout URL N1co ' . $n1coCheckout, true), $this->logger_context);
                 }
 
-
-                update_post_meta($order_id, 'n1coCheckoutURL', $redirectUrl);
-
-                $note = 'Orden fue enviada correctamente a N1co!';
-                $note .= ' OrderId: ' . $order_id;
-                $note .= ' CheckoutURL: ' . $redirectUrl;
+                $note = 'Orden fue enviada correctamente a n1co!' . "<br>";
+                $note .= ' OrderId: ' . $n1coOrderId . "<br>";
+                $note .= ' CheckoutURL: ' . $n1coCheckout . "<br>";
 
                 $order->update_status('pending');
                 $order->add_order_note($note, false);
@@ -293,7 +391,7 @@ function n1co_init_gateway_class() {
                 if ($redirect == 'redirect') {
                     return array(
                         'result' => 'success',
-                        'redirect' => $redirectUrl
+                        'redirect' => $n1coCheckout
                     );
                 } else {
                     return array(
@@ -302,7 +400,7 @@ function n1co_init_gateway_class() {
                     );
                 }
             } catch (Exception $ex) {
-                //wc_add_notice($ex->getMessage(), 'error');
+                wc_add_notice($ex->getMessage(), 'error');
                 wc_add_notice('No fue posible procesar la transacción, intente nuevamente', 'error');
                 wp_delete_post($order_id, true);
             }
@@ -313,130 +411,176 @@ function n1co_init_gateway_class() {
             global $url;
             global $wpdb;
 
-            $post = json_decode(file_get_contents('php://input'), true);
-            $orderId = isset($post['metadata']['order_id']) ? sanitize_text_field($post['metadata']['order_id']) : '';
-            $checkoutId = isset($post['orderId']) ? sanitize_text_field($post['orderId']) : '';
-            $description = isset($post['description']) ? sanitize_text_field($post['description']) : '';
-            $authorizationCode = isset($post['metadata']['AuthorizationCode']) ? sanitize_text_field($post['metadata']['AuthorizationCode']) : '';
-            $checkoutNote = isset($post['metadata']['CheckoutNote']) ? sanitize_text_field($post['metadata']['CheckoutNote']) : '';
-            $type = isset($post['type']) ? sanitize_text_field($post['type']) : '';
-
-            if ($this->n1co_log_enabled == 'yes') {
-                $this->logger->debug("****** WebHook for n1co Payment:", $this->logger_context);
-                $this->logger->debug(wc_print_r('checkoutId ' . $checkoutId, true), $this->logger_context);
-                $this->logger->debug(wc_print_r('authorization Code ' . $authorizationCode, true), $this->logger_context);
-                $this->logger->debug(wc_print_r('type ' . $type, true), $this->logger_context);
-                $this->logger->debug(wc_print_r('postId ' . json_encode($post), true), $this->logger_context);
-                $this->logger->debug(wc_print_r('OrderId ' . $orderId, true), $this->logger_context);
-                $this->logger->debug(wc_print_r('Description ' . $description, true), $this->logger_context);
+            if ($this->n1co_testmode == 'yes') {
+                $n1coWebhookKey = $this->get_option('n1co_test_webhook_key');
+            } else {
+                $n1coWebhookKey = $this->get_option('n1co_live_webhook_key');
             }
 
-            $statusPago = $type;
+            $hmacHeader = $_SERVER["HTTP_X_H4B_HMAC_SHA256"];
+            $content = file_get_contents("php://input");
 
-            // Return to home page if empty data.
+            // Generar el hash
+            $hash = hash_hmac('sha256', $content, $n1coWebhookKey, true);
+            $base64Hash = base64_encode($hash);
 
-            if (!empty($orderId)) {
+            if ($base64Hash === $hmacHeader) {
 
-                $redirect = $this->get_option('n1co_redirect_process');
+                $validaWebhook = 'SI';
 
-                $order = new WC_Order($orderId);
-                $url = $this->get_return_url($order);
+                $post = json_decode($content, true);
 
-                if ($order->has_status('completed') || $order->has_status('processing')) {
-                    return;
+                $orderId = isset($post['metadata']['order_id']) ? sanitize_text_field($post['metadata']['order_id']) : '';
+                $n1coOrderId = isset($post['orderId']) ? sanitize_text_field($post['orderId']) : '';
+                $status = isset($post['metadata']['Status']) ? sanitize_text_field($post['metadata']['Status']) : '';
+                $authorizationCode = isset($post['metadata']['AuthorizationCode']) ? sanitize_text_field($post['metadata']['AuthorizationCode']) : '';
+                $description = isset($post['description']) ? sanitize_text_field($post['description']) : '';
+                $type = isset($post['type']) ? sanitize_text_field($post['type']) : '';
+
+                if ($this->n1co_log_enabled == 'yes') {
+                    $this->logger->debug("****** WebHook for n1co Payment:", $this->logger_context);
+                    $this->logger->debug(wc_print_r('authorization Code ' . $authorizationCode, true), $this->logger_context);
+                    $this->logger->debug(wc_print_r('type ' . $type, true), $this->logger_context);
+                    $this->logger->debug(wc_print_r('OrderId ' . $orderId, true), $this->logger_context);
+                    $this->logger->debug(wc_print_r('Status ' . $status, true), $this->logger_context);
+                    $this->logger->debug(wc_print_r('n1coOrderId ' . $n1coOrderId, true), $this->logger_context);
+                    $this->logger->debug(wc_print_r('validaWebhook ' . $validaWebhook, true), $this->logger_context);
                 }
 
-                update_post_meta($orderId, 'Status_Pago', $statusPago);
-                update_post_meta($orderId, 'checkoutId', $checkoutId);
+                $statusPago = $type;
 
-                $respuestaNico = $post['metadata'];
+                // Return to home page if empty data.
 
-                foreach ($respuestaNico as $key => $value) {
-                    update_post_meta($orderId, $key, $value);
-                }
+                if (!empty($orderId)) {
 
-                if ($statusPago == 'PaymentError') {
+                    $redirect = $this->get_option('n1co_redirect_process');
 
-                    //El proceso de pago se encuentra en proceso
-                    $note = $description . ' desde portal n1co ';
-                    $order->add_order_note($note, false);
-                    $order->update_status('wc-failed', 'Falllido');
-                    return;
-                } else if ($statusPago == 'SuccessPayment') {
+                    $order = new WC_Order($orderId);
+                    $url = $this->get_return_url($order);
+
+                    if ($order->has_status('completed') || $order->has_status('processing')) {
+                        return;
+                    }
+
+                    update_post_meta($orderId, 'Status_Pago', $status);
+                    update_post_meta($orderId, 'checkoutId', $n1coOrderId);
+
+                    $respuestaNico = $post['metadata'];
+
+                    foreach ($respuestaNico as $key => $value) {
+                        update_post_meta($orderId, $key, $value);
+                    }
+
+                    if ($statusPago == 'PaymentError') {
+
+                        //El proceso de pago se encuentra en proceso
+                        $note = $description . ' desde portal n1co ';
+                        $order->add_order_note($note, false);
+                        $order->update_status('wc-failed', 'Falllido');
+                        return;
+                    } else if ($statusPago == 'SuccessPayment') {
 
 
-                    //El proceso de pago fue completado
-                    $note = $description . ' desde portal n1co ' . '<br>';
-                    $note .= ' Estatus de pago: ' . $statusPago . '<br>';
-                    $note .= ' CheckouId: ' . $checkoutId . '<br>';
-                    $note .= ' Nota del pedido n1co: ' . $checkoutNote;
+                        //El proceso de pago fue completado
+                        $note = $description . ' desde portal n1co ' . '<br>';
+                        $note .= ' Estatus de pago: ' . $statusPago . '<br>';
+                        $note .= ' CheckouId: ' . $n1coOrderId . '<br>';
+                        $note .= ' Nota del pedido n1co: ' . $description;
 
-                    $order->update_status('wc-processprocessing');
-                    $order->add_order_note($note, false);
-                    $order->payment_complete();
-                    $woocommerce->cart->empty_cart();
-                    wc_reduce_stock_levels($order);
+                        /* $order->update_status('wc-processprocessing');
+                          $order->add_order_note($note, false);
+                          $order->payment_complete();
+                          $woocommerce->cart->empty_cart();
+                          wc_reduce_stock_levels($order); */
 
-                    if ($redirect == 'iframe') {
-                        if ($this->n1co_log_enabled == 'yes') {
-                            $this->logger->debug("****** WebHook Redirect for n1co Payment2:", $this->logger_context);
-                            $this->logger->debug(wc_print_r('Url ' . $url, true), $this->logger_context);
+                        $woocommerce->cart->empty_cart();
+                        $order->payment_complete();
+                        $order->update_status('processing');
+                        wc_reduce_stock_levels($order->get_id());
+                        $order->add_order_note($note, false);
+
+                        if ($redirect == 'iframe') {
+                            if ($this->n1co_log_enabled == 'yes') {
+                                $this->logger->debug("****** WebHook Redirect for n1co Payment2:", $this->logger_context);
+                                $this->logger->debug(wc_print_r('Url ' . $url, true), $this->logger_context);
+                            }
+                            //return wp_safe_redirect($url);
+                            //return wp_safe_redirect($url);   
+
+                            echo '<script>';
+                            echo 'alert("Transaccipon aprobada correctamente por medio de la pasarela segur n1co.");';
+                            echo 'window.top.location.href = "' . esc_url($url) . '";'; // Redirección
+                            echo '</script>';
+
+                            //  echo '<script>window.top.location.href = "' . $url . '";</script>';
+                            exit;
                         }
-
-                        //return wp_safe_redirect($url);
-                        return wp_safe_redirect($url);
-                        exit();
+                    } else {
+                        $note = 'Pedido sigue en revision en la plataforma n1co';
+                        $order->add_order_note($note, false);
+                        return;
                     }
                 } else {
-                    $note = 'Pedido sigue en revision en la plataforma n1co';
-                    $order->add_order_note($note, false);
-                    return;
+
+
+                    $querystr = "SELECT $wpdb->postmeta.post_id FROM $wpdb->postmeta WHERE $wpdb->postmeta.meta_key = 'n1coOrderId' AND $wpdb->postmeta.meta_value = '$n1coOrderId' limit 1 ";
+                    $results = $wpdb->get_results($querystr);
+                    if (isset($results[0]->post_id) AND is_numeric($results[0]->post_id))
+                        $orderId = $results[0]->post_id;
+                    else
+                        return false;
+
+                    $order = new WC_Order($orderId);
+
+                    if ($statusPago == 'Cancelled' || $statusPago == 'SuccessReverse') {
+
+                        if ($this->n1co_log_enabled == 'yes') {
+                            $this->logger->debug("****** WebHook for n1co Refund:", $this->logger_context);
+                            $this->logger->debug(wc_print_r('n1coOrderId ' . $n1coOrderId, true), $this->logger_context);
+                            $this->logger->debug(wc_print_r('postId ' . $orderId, true), $this->logger_context);
+                            $this->logger->debug(wc_print_r('Description ' . $description, true), $this->logger_context);
+                        }
+
+                        $note = '';
+
+                        $note .= ($statusPago == 'Cancelled') ? $description . ' desde portal n1co ' : '';
+                        $note .= ($statusPago == 'SuccessReverse') ? $description . ' desde portal n1co ' : '';
+
+                        $order->add_order_note($note, false);
+                        update_post_meta($orderId, 'refunded', 'true');
+                        $order->update_status('refunded', 'order_note');
+                        return true;
+                    } else {
+
+                        if ($this->n1co_log_enabled == 'yes') {
+                            $this->logger->debug("****** WebHook for n1co:", $this->logger_context);
+                            $this->logger->debug(wc_print_r('n1coOrderId ' . $n1coOrderId, true), $this->logger_context);
+                            $this->logger->debug(wc_print_r('postId ' . $orderId, true), $this->logger_context);
+                            $this->logger->debug(wc_print_r('Description ' . $description, true), $this->logger_context);
+                        }
+
+                        $note = '';
+
+                        $note .= $description . ' desde portal n1co ';
+                        $order->add_order_note($note, false);
+                        return true;
+                    }
                 }
             } else {
 
+                $validaWebhook = 'NO';
 
-                $querystr = "SELECT $wpdb->postmeta.post_id FROM $wpdb->postmeta WHERE $wpdb->postmeta.meta_key = 'checkoutId' AND $wpdb->postmeta.meta_value = '$checkoutId' limit 1 ";
-                $results = $wpdb->get_results($querystr);
-                if (isset($results[0]->post_id) AND is_numeric($results[0]->post_id))
-                    $orderId = $results[0]->post_id;
-                else
-                    return false;
-
-                $order = new WC_Order($orderId);
-
-                if ($statusPago == 'Cancelled' || $statusPago == 'SuccessReverse') {
-
-                    if ($this->n1co_log_enabled == 'yes') {
-                        $this->logger->debug("****** WebHook for n1co Refund:", $this->logger_context);
-                        $this->logger->debug(wc_print_r('checkoutId ' . $checkoutId, true), $this->logger_context);
-                        $this->logger->debug(wc_print_r('postId ' . $orderId, true), $this->logger_context);
-                        $this->logger->debug(wc_print_r('Description ' . $description, true), $this->logger_context);
-                    }
-
-                    $note = '';
-
-                    $note .= ($statusPago == 'Cancelled') ? $description . ' desde portal n1co ' : '';
-                    $note .= ($statusPago == 'SuccessReverse') ? $description . ' desde portal n1co ' : '';
-
-                    $order->add_order_note($note, false);
-                    update_post_meta($orderId, 'refunded', 'true');
-                    $order->update_status('refunded', 'order_note');
-                    return true;
-                } else {
-
-                    if ($this->n1co_log_enabled == 'yes') {
-                        $this->logger->debug("****** WebHook for n1co:", $this->logger_context);
-                        $this->logger->debug(wc_print_r('checkoutId ' . $checkoutId, true), $this->logger_context);
-                        $this->logger->debug(wc_print_r('postId ' . $orderId, true), $this->logger_context);
-                        $this->logger->debug(wc_print_r('Description ' . $description, true), $this->logger_context);
-                    }
-
-                    $note = '';
-
-                    $note .= $description . ' desde portal n1co ';
-                    $order->add_order_note($note, false);
-                    return true;
+                if ($this->n1co_log_enabled == 'yes') {
+                    $this->logger->debug("****** WebHook for n1co Payment:", $this->logger_context);
+                    $this->logger->debug(wc_print_r('validaWebhook ' . $validaWebhook, true), $this->logger_context);
+                    $this->logger->debug(wc_print_r('$hmacHeader ' . $hmacHeader, true), $this->logger_context);
+                    $this->logger->debug(wc_print_r('$base64Hash ' . $base64Hash, true), $this->logger_context);
+                    $this->logger->debug(wc_print_r('$base64Hash ' . $base64Hash, true), $this->logger_context);
+                    $this->logger->debug(wc_print_r('No se recibio respuesta valida por parte del procesador de pagos n1co', true), $this->logger_context);
                 }
+
+                wc_add_notice('No se recibio respuesta por parte del procesador de pagos n1co, intente nuevamente', 'error');
+                exit();
             }
         }
 
@@ -446,10 +590,14 @@ function n1co_init_gateway_class() {
             <table class="form-table">
                 <?php $this->generate_settings_html($this->general_settings); ?>
             </table>
-            <!--  <h2><?php _e('Live mode', 'woocommerce'); ?></h2>
+            <h2><?php _e('Live mode', 'woocommerce'); ?></h2>
             <table class="form-table">
-            <?php $this->generate_settings_html($this->live_mode); ?>
-            </table>-->
+                <?php $this->generate_settings_html($this->live_mode); ?>
+            </table>
+            <h2><?php _e('Sandbox mode', 'woocommerce'); ?></h2>
+            <table class="form-table">
+                <?php $this->generate_settings_html($this->sandbox_mode); ?>
+            </table>
             <?php
         }
 
